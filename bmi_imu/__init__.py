@@ -95,7 +95,7 @@ class Driver:
   # @return Device ID (should be 0xD1)
   # @see BMI160_RA_CHIP_ID
   def get_device_id(self):
-    return self._reg_read(registers.CHIP_ID)
+    return self._reg_read(registers_common.CHIP_ID)
 
   # Get gyroscope output data rate.
   # The gyr_odr parameter allows setting the output data rate of the gyroscope
@@ -1929,3 +1929,6 @@ class Driver:
 
   def close(self):
     self.bus.close()
+
+
+driver = Driver()
