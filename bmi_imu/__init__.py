@@ -1,10 +1,16 @@
 # FROM https://github.com/serioeseGmbH/BMI160
 # based on https://github.com/arduino/ArduinoCore-arc32/blob/master/libraries/CurieIMU/src/BMI160.cpp
 
-from BMI160_i2c import registers
-from BMI160_i2c import commands
-from BMI160_i2c import definitions
-from BMI160_i2c.sleep import sleep_us, sleep_ms
+#from bmi_imu import registers
+#from bmi_imu import commands
+#from bmi_imu import definitions
+#from bmi_imu.sleep import sleep_us, sleep_ms
+
+import registers_common
+import definitions_common
+import commands
+
+from sleep import sleep_us, sleep_ms
 
 from struct import unpack
 from smbus2 import SMBus, i2c_msg
@@ -20,38 +26,46 @@ class Driver:
     
     # Initialize the i2c bus driver
     self.bus = SMBus(bus)
-    
-    # Issue a soft-reset to bring the device into a clean state
-    self._reg_write(registers.CMD, commands.SOFT_RESET)
-    sleep_ms(1)
 
-    # Issue a dummy-read to force the device into I2C comms mode
-    self._reg_read(0x7F)
-    sleep_ms(1)
+    match self.get_device_id():
+        case 0xd1:
+            print("Device is BMI160")
+        case 0x27:
+            print("Device is BMI260")
+        case _:
+            print("Unable to identify device by ID")
 
-    # Power up the accelerometer
-    self._reg_write(registers.CMD, commands.ACC_MODE_NORMAL)
+    ## Issue a soft-reset to bring the device into a clean state
+    #self._reg_write(registers.CMD, commands.SOFT_RESET)
+    #sleep_ms(1)
+
+    ## Issue a dummy-read to force the device into I2C comms mode
+    #self._reg_read(0x7F)
+    #sleep_ms(1)
+
+    ## Power up the accelerometer
+    #self._reg_write(registers.CMD, commands.ACC_MODE_NORMAL)
     # Wait for power-up to complete
-    while (1 != self._reg_read_bits(registers.PMU_STATUS, definitions.ACC_PMU_STATUS_BIT, definitions.ACC_PMU_STATUS_LEN)):
-      pass
-    sleep_ms(1)
+    #while (1 != self._reg_read_bits(registers.PMU_STATUS, definitions.ACC_PMU_STATUS_BIT, definitions.ACC_PMU_STATUS_LEN)):
+    #  pass
+    #sleep_ms(1)
 
-    # Power up the gyroscope
-    self._reg_write(registers.CMD, commands.GYR_MODE_NORMAL)
-    sleep_ms(1)
-    # Wait for power-up to complete
-    while (1 != self._reg_read_bits(registers.PMU_STATUS, definitions.GYR_PMU_STATUS_BIT, definitions.GYR_PMU_STATUS_LEN)):
-      sleep_ms(200)
-      pass
-    sleep_ms(1)
+    ## Power up the gyroscope
+    #self._reg_write(registers.CMD, commands.GYR_MODE_NORMAL)
+    #sleep_ms(1)
+    ## Wait for power-up to complete
+    #while (1 != self._reg_read_bits(registers.PMU_STATUS, definitions.GYR_PMU_STATUS_BIT, definitions.GYR_PMU_STATUS_LEN)):
+    #  sleep_ms(200)
+    #  pass
+    #sleep_ms(1)
 
-    self.setFullScaleGyroRange(definitions.GYRO_RANGE_250, 250.0)
-    self.setFullScaleAccelRange(definitions.ACCEL_RANGE_2G, 2.0)
+    #self.setFullScaleGyroRange(definitions.GYRO_RANGE_250, 250.0)
+    #self.setFullScaleAccelRange(definitions.ACCEL_RANGE_2G, 2.0)
 
-    # Only PIN1 interrupts currently supported - map all interrupts to PIN1
-    self._reg_write(registers.INT_MAP_0, 0xFF)
-    self._reg_write(registers.INT_MAP_1, 0xF0)
-    self._reg_write(registers.INT_MAP_2, 0x00)
+    ## Only PIN1 interrupts currently supported - map all interrupts to PIN1
+    #self._reg_write(registers.INT_MAP_0, 0xFF)
+    #self._reg_write(registers.INT_MAP_1, 0xF0)
+    #self._reg_write(registers.INT_MAP_2, 0x00)
 
   def _reg_read_bits(self, reg, pos, len):
     b = self._reg_read(reg)
