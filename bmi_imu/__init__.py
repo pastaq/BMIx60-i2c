@@ -7,7 +7,7 @@
 #from bmi_imu.sleep import sleep_us, sleep_ms
 
 import registers_common
-import definitions_common
+import definitions
 import commands
 
 from sleep import sleep_us, sleep_ms
@@ -15,7 +15,7 @@ from sleep import sleep_us, sleep_ms
 from struct import unpack
 from smbus2 import SMBus, i2c_msg
 
-class Driver:
+class BMU_IMU:
 
   # Power on and prepare for general usage.
   # This will activate the device and take it out of sleep mode (which must be done
@@ -28,44 +28,47 @@ class Driver:
     self.bus = SMBus(bus)
 
     match self.get_device_id():
-        case 0xd1:
-            print("Device is BMI160")
-        case 0x27:
-            print("Device is BMI260")
-        case _:
-            print("Unable to identify device by ID")
+      case 0xd1:
+        print("Device is BMI160")
+        import registers_160 as registers_imu
+      case 0x27:
+        print("Device is BMI260")
+        import registers_260 as registers_imu
+      case _:
+        print("Unable to identify device by ID")
+        exit(1)
 
-    ## Issue a soft-reset to bring the device into a clean state
-    #self._reg_write(registers.CMD, commands.SOFT_RESET)
-    #sleep_ms(1)
+    # Issue a soft-reset to bring the device into a clean state
+    self._reg_write(registers_common.CMD, commands.SOFT_RESET)
+    sleep_ms(1)
 
-    ## Issue a dummy-read to force the device into I2C comms mode
-    #self._reg_read(0x7F)
-    #sleep_ms(1)
+    # Issue a dummy-read to force the device into I2C comms mode
+    self._reg_read(0x7F)
+    sleep_ms(1)
 
-    ## Power up the accelerometer
-    #self._reg_write(registers.CMD, commands.ACC_MODE_NORMAL)
+    # Power up the accelerometer
+    self._reg_write(registers_common.CMD, commands.ACC_MODE_NORMAL)
     # Wait for power-up to complete
-    #while (1 != self._reg_read_bits(registers.PMU_STATUS, definitions.ACC_PMU_STATUS_BIT, definitions.ACC_PMU_STATUS_LEN)):
-    #  pass
-    #sleep_ms(1)
+    while (1 != self._reg_read_bits(registers_common.PMU_STATUS, definitions.ACC_PMU_STATUS_BIT, definitions.ACC_PMU_STATUS_LEN)):
+      pass
+    sleep_ms(1)
 
-    ## Power up the gyroscope
-    #self._reg_write(registers.CMD, commands.GYR_MODE_NORMAL)
-    #sleep_ms(1)
-    ## Wait for power-up to complete
-    #while (1 != self._reg_read_bits(registers.PMU_STATUS, definitions.GYR_PMU_STATUS_BIT, definitions.GYR_PMU_STATUS_LEN)):
-    #  sleep_ms(200)
-    #  pass
-    #sleep_ms(1)
+    # Power up the gyroscope
+    self._reg_write(registers_common.CMD, commands.GYR_MODE_NORMAL)
+    sleep_ms(1)
+    # Wait for power-up to complete
+    while (1 != self._reg_read_bits(registers_common.PMU_STATUS, definitions.GYR_PMU_STATUS_BIT, definitions.GYR_PMU_STATUS_LEN)):
+      sleep_ms(200)
+      pass
+    sleep_ms(1)
 
-    #self.setFullScaleGyroRange(definitions.GYRO_RANGE_250, 250.0)
-    #self.setFullScaleAccelRange(definitions.ACCEL_RANGE_2G, 2.0)
+    self.setFullScaleGyroRange(definitions.GYRO_RANGE_250, 250.0)
+    self.setFullScaleAccelRange(definitions.ACCEL_RANGE_2G, 2.0)
 
-    ## Only PIN1 interrupts currently supported - map all interrupts to PIN1
-    #self._reg_write(registers.INT_MAP_0, 0xFF)
-    #self._reg_write(registers.INT_MAP_1, 0xF0)
-    #self._reg_write(registers.INT_MAP_2, 0x00)
+    # Only PIN1 interrupts currently supported - map all interrupts to PIN1
+    self._reg_write(registers_imu.INT_MAP_0, 0xFF)
+    self._reg_write(registers_imu.INT_MAP_1, 0xF0)
+    self._reg_write(registers_imu.INT_MAP_2, 0x00)
 
   def _reg_read_bits(self, reg, pos, len):
     b = self._reg_read(reg)
@@ -113,18 +116,18 @@ class Driver:
   # </pre>
   #
   # @return Current sample rate
-  # @see registers.GYRO_CONF
+  # @see registers_common.GYRO_CONF
   # @see BMI160GyroRate
   def get_gyro_rate(self):
-    return self._reg_read_bits(registers.GYRO_CONF, definitions.GYRO_RATE_SEL_BIT, definitions.GYRO_RATE_SEL_LEN)
+    return self._reg_read_bits(registers_common.GYRO_CONF, definitions.GYRO_RATE_SEL_BIT, definitions.GYRO_RATE_SEL_LEN)
 
   # Set gyroscope output data rate.
   # @param rate New output data rate
   # @see get_gyro_rate()
   # @see definitions.GYRO_RATE_25HZ
-  # @see registers.GYRO_CONF
+  # @see registers_common.GYRO_CONF
   def set_gyro_rate(self, rate):
-    self._reg_write_bits(registers.GYRO_CONF, rate,
+    self._reg_write_bits(registers_common.GYRO_CONF, rate,
       definitions.GYRO_RATE_SEL_BIT, definitions.GYRO_RATE_SEL_LEN)
 
   # Get accelerometer output data rate.
@@ -144,17 +147,17 @@ class Driver:
   # </pre>
   #
   # @return Current sample rate
-  # @see registers.ACCEL_CONF
+  # @see registers_common.ACCEL_CONF
   # @see BMI160AccelRate
   def get_accel_rate(self):
-    return self._reg_read_bits(registers.ACCEL_CONF, definitions.ACCEL_RATE_SEL_BIT, definitions.ACCEL_RATE_SEL_LEN)
+    return self._reg_read_bits(registers_common.ACCEL_CONF, definitions.ACCEL_RATE_SEL_BIT, definitions.ACCEL_RATE_SEL_LEN)
 
   # Set accelerometer output data rate.
   # @param rate New output data rate
   # @see get_accel_rate()
-  # @see registers.ACCEL_CONF
+  # @see registers_common.ACCEL_CONF
   def set_accel_rate(self, rate):
-    self._reg_write_bits(registers.ACCEL_CONF, rate,
+    self._reg_write_bits(registers_common.ACCEL_CONF, rate,
       definitions.ACCEL_RATE_SEL_BIT, definitions.ACCEL_RATE_SEL_LEN)
 
   # Get gyroscope digital low-pass filter mode.
@@ -183,16 +186,16 @@ class Driver:
   # bandwidths above are approximately 4 times smaller.
   #
   # @return DLFP configuration
-  # @see registers.GYRO_CONF
+  # @see registers_common.GYRO_CONF
   # @see BMI160DLPFMode
   def get_gyro_dlpf_mode(self):
-    return self._reg_read_bits(registers.GYRO_CONF, definitions.GYRO_DLPF_SEL_BIT, definitions.GYRO_DLPF_SEL_LEN)
+    return self._reg_read_bits(registers_common.GYRO_CONF, definitions.GYRO_DLPF_SEL_BIT, definitions.GYRO_DLPF_SEL_LEN)
 
   # Set gyroscope digital low-pass filter configuration.
   # @param mode New DLFP configuration setting
   # @see get_gyro_dlpf_mode()
   def set_gyro_dlpf_mod(self, emode):
-    return self._reg_write_bits(registers.GYRO_CONF, mode, definitions.GYRO_DLPF_SEL_BIT, definitions.GYRO_DLPF_SEL_LEN)
+    return self._reg_write_bits(registers_common.GYRO_CONF, mode, definitions.GYRO_DLPF_SEL_BIT, definitions.GYRO_DLPF_SEL_LEN)
 
   # Get accelerometer digital low-pass filter mode.
   # The acc_bwp parameter sets the accelerometer digital low pass filter configuration.
@@ -220,16 +223,16 @@ class Driver:
   # bandwidths above are approximately 4 times smaller.
   #
   # @return DLFP configuration
-  # @see registers.GYRO_CONF
+  # @see registers_common.GYRO_CONF
   # @see BMI160DLPFMode
   def getAccelDLPFMode(self):
-    return self._reg_read_bits(registers.ACCEL_CONF, definitions.ACCEL_DLPF_SEL_BIT, definitions.ACCEL_DLPF_SEL_LEN)
+    return self._reg_read_bits(registers_common.ACCEL_CONF, definitions.ACCEL_DLPF_SEL_BIT, definitions.ACCEL_DLPF_SEL_LEN)
 
   # Set accelerometer digital low-pass filter configuration.
   # @param mode New DLFP configuration setting
   # @see getAccelDLPFMode()
   def setAccelDLPFMode(self, mode):
-    return self._reg_write_bits(registers.ACCEL_CONF, mode, definitions.ACCEL_DLPF_SEL_BIT, definitions.ACCEL_DLPF_SEL_LEN)
+    return self._reg_write_bits(registers_common.ACCEL_CONF, mode, definitions.ACCEL_DLPF_SEL_BIT, definitions.ACCEL_DLPF_SEL_LEN)
 
   # Get full-scale gyroscope range.
   # The gyr_range parameter allows setting the full-scale range of the gyro sensors,
@@ -244,16 +247,16 @@ class Driver:
   # </pre>
   #
   # @return Current full-scale gyroscope range setting
-  # @see registers.GYRO_RANGE
+  # @see registers_common.GYRO_RANGE
   # @see BMI160GyroRange
   def getFullScaleGyroRange(self):
-    return self._reg_read_bits(registers.GYRO_RANGE, definitions.GYRO_RANGE_SEL_BIT, definitions.GYRO_RANGE_SEL_LEN)
+    return self._reg_read_bits(registers_common.GYRO_RANGE, definitions.GYRO_RANGE_SEL_BIT, definitions.GYRO_RANGE_SEL_LEN)
 
   # Set full-scale gyroscope range.
   # @param range New full-scale gyroscope range value
   # @see getFullScaleGyroRange()
   def setFullScaleGyroRange(self, range, real):
-    self._reg_write_bits(registers.GYRO_RANGE, range,
+    self._reg_write_bits(registers_common.GYRO_RANGE, range,
       definitions.GYRO_RANGE_SEL_BIT, definitions.GYRO_RANGE_SEL_LEN)
     self.gyro_range = real
 
@@ -269,31 +272,31 @@ class Driver:
   # </pre>
   #
   # @return Current full-scale accelerometer range setting
-  # @see registers.ACCEL_RANGE
+  # @see registers_common.ACCEL_RANGE
   # @see BMI160AccelRange
   def getFullScaleAccelRange(self):
-    return self._reg_read_bits(registers.ACCEL_RANGE, definitions.ACCEL_RANGE_SEL_BIT, definitions.ACCEL_RANGE_SEL_LEN)
+    return self._reg_read_bits(registers_common.ACCEL_RANGE, definitions.ACCEL_RANGE_SEL_BIT, definitions.ACCEL_RANGE_SEL_LEN)
 
   # Set full-scale accelerometer range.
   # @param range New full-scale accelerometer range setting
   # @see getFullScaleAccelRange()
   # @see BMI160AccelRange
   def setFullScaleAccelRange(self, range, real):
-    self._reg_write_bits(registers.ACCEL_RANGE, range,
+    self._reg_write_bits(registers_common.ACCEL_RANGE, range,
       definitions.ACCEL_RANGE_SEL_BIT, definitions.ACCEL_RANGE_SEL_LEN)
     self.accel_range = real
 
   # Get accelerometer offset compensation enabled value.
   # @see getXAccelOffset()
-  # @see registers.OFFSET_6
+  # @see registers_common.OFFSET_EN_GYR98
   def getAccelOffsetEnabled(self):
-    return 0 != (self._reg_read_bits(registers.OFFSET_6, definitions.ACC_OFFSET_EN, 1))
+    return 0 != (self._reg_read_bits(registers_common.OFFSET_EN_GYR98, definitions.ACC_OFFSET_EN, 1))
 
   # Set accelerometer offset compensation enabled value.
   # @see getXAccelOffset()
-  # @see registers.OFFSET_6
+  # @see registers_common.OFFSET_EN_GYR98
   def setAccelOffsetEnabled(self, enabled):
-    self._reg_write_bits(registers.OFFSET_6,
+    self._reg_write_bits(registers_common.OFFSET_EN_GYR98,
       1 if enabled else 0, definitions.ACC_OFFSET_EN, 1)
 
   # Execute internal calibration to generate Accelerometer X-Axis offset value.
@@ -311,8 +314,8 @@ class Driver:
   # @param target X-axis target value (0 = 0g, 1 = +1g, -1 = -1g)
   # @see setAccelOffsetEnabled()
   # @see getXAccelOffset()
-  # @see registers.FOC_CONF
-  # @see registers.CMD
+  # @see registers_common.FOC_CONF
+  # @see registers_common.CMD
   def autoCalibrateXAccelOffset(self, target):
     foc_conf = 0
     if (target == 1):
@@ -324,9 +327,9 @@ class Driver:
     else:
       return  # Invalid target value
 
-    self._reg_write(registers.FOC_CONF, foc_conf)
-    self._reg_write(registers.CMD, commands.START_FOC)
-    while (not (self._reg_read_bits(registers.STATUS, definitions.STATUS_FOC_RDY, 1))):
+    self._reg_write(registers_imu.FOC_CONF, foc_conf)
+    self._reg_write(registers_common.CMD, commands.START_FOC)
+    while (not (self._reg_read_bits(registers_common.STATUS, definitions.STATUS_FOC_RDY, 1))):
       sleep_ms(1)
 
   # Execute internal calibration to generate Accelerometer Y-Axis offset value.
@@ -344,8 +347,8 @@ class Driver:
   # @param target Y-axis target value (0 = 0g, 1 = +1g, -1 = -1g)
   # @see setAccelOffsetEnabled()
   # @see getYAccelOffset()
-  # @see registers.FOC_CONF
-  # @see registers.CMD
+  # @see registers_common.FOC_CONF
+  # @see registers_common.CMD
   def autoCalibrateYAccelOffset(self, target):
     foc_conf = 0
     if (target == 1):
@@ -357,9 +360,9 @@ class Driver:
     else:
       return  # Invalid target value
 
-    self._reg_write(registers.FOC_CONF, foc_conf)
-    self._reg_write(registers.CMD, commands.START_FOC)
-    while (not (self._reg_read_bits(registers.STATUS, definitions.STATUS_FOC_RDY, 1))):
+    self._reg_write(registers_imu.FOC_CONF, foc_conf)
+    self._reg_write(registers_common.CMD, commands.START_FOC)
+    while (not (self._reg_read_bits(registers_common.STATUS, definitions.STATUS_FOC_RDY, 1))):
       sleep_ms(1)
 
   # Execute internal calibration to generate Accelerometer Z-Axis offset value.
@@ -377,8 +380,8 @@ class Driver:
   # @param target Z-axis target value (0 = 0g, 1 = +1g, -1 = -1g)
   # @see setAccelOffsetEnabled()
   # @see getZAccelOffset()
-  # @see registers.FOC_CONF
-  # @see registers.CMD
+  # @see registers_common.FOC_CONF
+  # @see registers_common.CMD
   def autoCalibrateZAccelOffset(self, target):
     foc_conf = 0
     if (target == 1):
@@ -390,71 +393,71 @@ class Driver:
     else:
       return  # Invalid target value
 
-    self._reg_write(registers.FOC_CONF, foc_conf)
-    self._reg_write(registers.CMD, commands.START_FOC)
-    while (not (self._reg_read_bits(registers.STATUS, definitions.STATUS_FOC_RDY, 1))):
+    self._reg_write(registers_imu.FOC_CONF, foc_conf)
+    self._reg_write(registers_common.CMD, commands.START_FOC)
+    while (not (self._reg_read_bits(registers_common.STATUS, definitions.STATUS_FOC_RDY, 1))):
       sleep_ms(1)
 
   # Get offset compensation value for accelerometer X-axis data.
   # The value is represented as an 8-bit two-complement number in
   # units of 3.9mg per LSB.
-  # @see registers.OFFSET_0
+  # @see registers_common.OFFSET_ACC70
   def getXAccelOffset(self):
-    return self._reg_read(registers.OFFSET_0)
+    return self._reg_read(registers_common.OFFSET_ACC70)
 
   # Set offset compensation value for accelerometer X-axis data.
   # This is used for applying manual calibration constants if required.
   # For auto-calibration, @see autoCalibrateXAccelOffset().
   # @see getXAccelOffset()
-  # @see registers.OFFSET_0
+  # @see registers_common.OFFSET_ACC70
   def setXAccelOffset(self, offset):
-    self._reg_write(registers.OFFSET_0, offset)
+    self._reg_write(registers_common.OFFSET_ACC70, offset)
     getAccelerationX()  # Read and discard the next data value
 
   # Get offset compensation value for accelerometer Y-axis data.
   # The value is represented as an 8-bit two-complement number in
   # units of 3.9mg per LSB.
-  # @see registers.OFFSET_1
+  # @see registers_imu.OFFSET_1
   def getYAccelOffset(self):
-    return self._reg_read(registers.OFFSET_1)
+    return self._reg_read(registers_imu.OFFSET_1)
 
   # Set offset compensation value for accelerometer Y-axis data.
   # This is used for applying manual calibration constants if required.
   # For auto-calibration, @see autoCalibrateYAccelOffset().
   # @see getYAccelOffset()
-  # @see registers.OFFSET_1
+  # @see registers_imu.OFFSET_1
   def setYAccelOffset(self, offset):
-    self._reg_write(registers.OFFSET_1, offset)
+    self._reg_write(registers_imu.OFFSET_1, offset)
     getAccelerationY()  # Read and discard the next data value
 
   # Get offset compensation value for accelerometer Z-axis data.
   # The value is represented as an 8-bit two-complement number in
   # units of 3.9mg per LSB.
-  # @see registers.OFFSET_2
+  # @see registers_imu.OFFSET_2
   def getZAccelOffset(self):
-    return self._reg_read(registers.OFFSET_2)
+    return self._reg_read(registers_imu.OFFSET_2)
 
   # Set offset compensation value for accelerometer Z-axis data.
   # This is used for applying manual calibration constants if required.
   # For auto-calibration, @see autoCalibrateZAccelOffset().
   # @see getZAccelOffset()
-  # @see registers.OFFSET_2
+  # @see registers_imu.OFFSET_2
   def setZAccelOffset(self, offset):
-    self._reg_write(registers.OFFSET_2, offset)
+    self._reg_write(registers_imu.OFFSET_2, offset)
     getAccelerationZ()  # Read and discard the next data value
 
   # Get gyroscope offset compensation enabled value.
   # @see getXGyroOffset()
-  # @see registers.OFFSET_6
+  # @see registers_common.OFFSET_EN_GYR98
   def getGyroOffsetEnabled(self):
-    return 0 != (self._reg_read_bits(registers.OFFSET_6, definitions.GYR_OFFSET_EN, 1))
+    return 0 != (self._reg_read_bits(registers_common.OFFSET_EN_GYR98, definitions.GYR_OFFSET_EN, 1))
 
   # Set gyroscope offset compensation enabled value.
   # @see getXGyroOffset()
-  # @see registers.OFFSET_6
+  # @see registers_common.OFFSET_EN_GYR98
   def setGyroOffsetEnabled(self, enabled):
     self._reg_write_bits(
-      registers.OFFSET_6, 0x1 if enabled else 0, definitions.GYR_OFFSET_EN, 1)
+      registers_common.OFFSET_EN_GYR98, 0x1 if enabled else 0, definitions.GYR_OFFSET_EN, 1)
 
   # Execute internal calibration to generate Gyro offset values.
   # This populates the Gyro offset compensation values for all 3 axes.
@@ -469,23 +472,23 @@ class Driver:
   # @see getXGyroOffset()
   # @see getYGyroOffset()
   # @see getZGyroOffset()
-  # @see registers.FOC_CONF
-  # @see registers.CMD
+  # @see registers_common.FOC_CONF
+  # @see registers_common.CMD
   def autoCalibrateGyroOffset(self):
     foc_conf = (1 << definitions.FOC_GYR_EN)
-    self._reg_write(registers.FOC_CONF, foc_conf)
-    self._reg_write(registers.CMD, commands.START_FOC)
-    while (not (self._reg_read_bits(registers.STATUS, definitions.STATUS_FOC_RDY, 1))):
+    self._reg_write(registers_imu.FOC_CONF, foc_conf)
+    self._reg_write(registers_common.CMD, commands.START_FOC)
+    while (not (self._reg_read_bits(registers_common.STATUS, definitions.STATUS_FOC_RDY, 1))):
       sleep_ms(1)
 
   # Get offset compensation value for gyroscope X-axis data.
   # The value is represented as an 10-bit two-complement number in
   # units of 0.061 degrees/s per LSB (sign-extended for type).
-  # @see registers.OFFSET_3
-  # @see registers.OFFSET_6
+  # @see registers_common.OFFSET_GYR70
+  # @see registers_common.OFFSET_EN_GYR98
   def getXGyroOffset(self):
-    offset = self._reg_read(registers.OFFSET_3)
-    offset |= (self._reg_read_bits(registers.OFFSET_6,
+    offset = self._reg_read(registers_common.OFFSET_GYR70)
+    offset |= (self._reg_read_bits(registers_common.OFFSET_EN_GYR98,
       definitions.GYR_OFFSET_X_MSB_BIT, definitions.GYR_OFFSET_X_MSB_LEN)) << 8
     return self._sign_extend(offset, 10)
 
@@ -493,22 +496,22 @@ class Driver:
   # This is used for applying manual calibration constants if required.
   # For auto-calibration, @see autoCalibrateGyroOffset().
   # @see getXGyroOffset()
-  # @see registers.OFFSET_3
-  # @see registers.OFFSET_6
+  # @see registers_common.OFFSET_GYR70
+  # @see registers_common.OFFSET_EN_GYR98
   def setXGyroOffset(self, offset):
-    self._reg_write(registers.OFFSET_3, offset)
-    self._reg_write_bits(registers.OFFSET_6, offset >> 8,
+    self._reg_write(registers_common.OFFSET_GYR70, offset)
+    self._reg_write_bits(registers_common.OFFSET_EN_GYR98, offset >> 8,
       definitions.GYR_OFFSET_X_MSB_BIT, definitions.GYR_OFFSET_X_MSB_LEN)
     getRotationX()  # Read and discard the next data value
 
   # Get offset compensation value for gyroscope Y-axis data.
   # The value is represented as an 10-bit two-complement number in
   # units of 0.061 degrees/s per LSB (sign-extended for type).
-  # @see registers.OFFSET_4
-  # @see registers.OFFSET_6
+  # @see registers_imu.OFFSET_4
+  # @see registers_common.OFFSET_EN_GYR98
   def getYGyroOffset(self):
-    offset = self._reg_read(registers.OFFSET_4)
-    offset |= (self._reg_read_bits(registers.OFFSET_6,
+    offset = self._reg_read(registers_imu.OFFSET_4)
+    offset |= (self._reg_read_bits(registers_common.OFFSET_EN_GYR98,
       definitions.GYR_OFFSET_Y_MSB_BIT, definitions.GYR_OFFSET_Y_MSB_LEN)) << 8
     return self._sign_extend(offset, 10)
 
@@ -516,22 +519,22 @@ class Driver:
   # This is used for applying manual calibration constants if required.
   # For auto-calibration, @see autoCalibrateGyroOffset().
   # @see getYGyroOffset()
-  # @see registers.OFFSET_4
-  # @see registers.OFFSET_6
+  # @see registers_imu.OFFSET_4
+  # @see registers_common.OFFSET_EN_GYR98
   def setYGyroOffset(self, offset):
-    self._reg_write(registers.OFFSET_4, offset)
-    self._reg_write_bits(registers.OFFSET_6, offset >> 8,
+    self._reg_write(registers_imu.OFFSET_4, offset)
+    self._reg_write_bits(registers_common.OFFSET_EN_GYR98, offset >> 8,
       definitions.GYR_OFFSET_Y_MSB_BIT, definitions.GYR_OFFSET_Y_MSB_LEN)
     getRotationY()  # Read and discard the next data value
 
   # Get offset compensation value for gyroscope Z-axis data.
   # The value is represented as an 10-bit two-complement number in
   # units of 0.061 degrees/s per LSB (sign-extended for type).
-  # @see registers.OFFSET_5
-  # @see registers.OFFSET_6
+  # @see registers_imu.OFFSET_5
+  # @see registers_common.OFFSET_EN_GYR98
   def getZGyroOffset(self):
-    offset = self._reg_read(registers.OFFSET_5)
-    offset |= (self._reg_read_bits(registers.OFFSET_6,
+    offset = self._reg_read(registers_imu.OFFSET_5)
+    offset |= (self._reg_read_bits(registers_common.OFFSET_EN_GYR98,
       definitions.GYR_OFFSET_Z_MSB_BIT, definitions.GYR_OFFSET_Z_MSB_LEN)) << 8
     return self._sign_extend(offset, 10)
 
@@ -539,11 +542,11 @@ class Driver:
   # This is used for applying manual calibration constants if required.
   # For auto-calibration, @see autoCalibrateGyroOffset().
   # @see getZGyroOffset()
-  # @see registers.OFFSET_5
-  # @see registers.OFFSET_6
+  # @see registers_imu.OFFSET_5
+  # @see registers_common.OFFSET_EN_GYR98
   def setZGyroOffset(self, offset):
-    self._reg_write(registers.OFFSET_5, offset)
-    self._reg_write_bits(registers.OFFSET_6, offset >> 8,
+    self._reg_write(registers_imu.OFFSET_5, offset)
+    self._reg_write_bits(registers_common.OFFSET_EN_GYR98, offset >> 8,
       definitions.GYR_OFFSET_Z_MSB_BIT, definitions.GYR_OFFSET_Z_MSB_LEN)
     getRotationZ()  # Read and discard the next data value
 
@@ -554,22 +557,22 @@ class Driver:
   # three axes are each less than the detection threshold. This condition
   # triggers the Free-Fall (low-g) interrupt if the condition is maintained for
   # the duration specified in the int_low_dur field of the INT_LOWHIGH[0]
-  # register (@see registers.INT_LOWHIGH_0)
+  # register (@see registers_imu.INT_LOWHIGH_0)
   #
   # For more details on the Free Fall detection interrupt, see Section 2.6.7 of the
   # BMI160 Data Sheet.
   #
   # @return Current free-fall acceleration threshold value (LSB = 7.81mg, 0 = 3.91mg)
-  # @see registers.INT_LOWHIGH_1
+  # @see registers_imu.INT_LOWHIGH_1
   def getFreefallDetectionThreshold(self):
-    return self._reg_read(registers.INT_LOWHIGH_1)
+    return self._reg_read(registers_imu.INT_LOWHIGH_1)
 
   # Set free-fall event acceleration threshold.
   # @param threshold New free-fall acceleration threshold value (LSB = 7.81mg, 0 = 3.91mg)
   # @see getFreefallDetectionThreshold()
-  # @see registers.INT_LOWHIGH_1
+  # @see registers_imu.INT_LOWHIGH_1
   def setFreefallDetectionThreshold(self, threshold):
-    self._reg_write(registers.INT_LOWHIGH_1, threshold)
+    self._reg_write(registers_imu.INT_LOWHIGH_1, threshold)
 
   # Get free-fall event duration threshold.
   # This register configures the duration threshold for Free Fall event
@@ -580,16 +583,16 @@ class Driver:
   # the BMI160 Data Sheet.
   #
   # @return Current free-fall duration threshold value (LSB = 2.5ms, 0 = 2.5ms)
-  # @see registers.INT_LOWHIGH_0
+  # @see registers_imu.INT_LOWHIGH_0
   def getFreefallDetectionDuration(self):
-    return self._reg_read(registers.INT_LOWHIGH_0)
+    return self._reg_read(registers_imu.INT_LOWHIGH_0)
 
   # Set free-fall event duration threshold.
   # @param duration New free-fall duration threshold value (LSB = 2.5ms, 0 = 2.5ms)
   # @see getFreefallDetectionDuration()
-  # @see registers.INT_LOWHIGH_0
+  # @see registers_imu.INT_LOWHIGH_0
   def setFreefallDetectionDuration(self, duration):
-    self._reg_write(registers.INT_LOWHIGH_0, duration)
+    self._reg_write(registers_imu.INT_LOWHIGH_0, duration)
 
   # Get shock event acceleration threshold.
   # This register configures the detection threshold for Shock event
@@ -609,22 +612,22 @@ class Driver:
   # for any of the three axes exceeds the detection threshold. This condition
   # triggers the Shock (high-g) interrupt if the condition is maintained without
   # a sign-change for the duration specified in the int_high_dur field of the
-  # INT_LOWHIGH[3] register (@see registers.INT_LOWHIGH_3).
+  # INT_LOWHIGH[3] register (@see registers_imu.INT_LOWHIGH_3).
   #
   # For more details on the Shock (high-g) detection interrupt, see Section 2.6.8 of the
   # BMI160 Data Sheet.
   #
   # @return Current shock acceleration threshold value
-  # @see registers.INT_LOWHIGH_4
+  # @see registers_imu.INT_LOWHIGH_4
   def getShockDetectionThreshold(self):
-    return self._reg_read(registers.INT_LOWHIGH_4)
+    return self._reg_read(registers_imu.INT_LOWHIGH_4)
 
   # Set shock event acceleration threshold.
   # @param threshold New shock acceleration threshold value
   # @see getShockDetectionThreshold()
-  # @see registers.INT_LOWHIGH_4
+  # @see registers_imu.INT_LOWHIGH_4
   def setShockDetectionThreshold(self, threshold):
-    self._reg_write(registers.INT_LOWHIGH_4, threshold)
+    self._reg_write(registers_imu.INT_LOWHIGH_4, threshold)
 
   # Get shock event duration threshold.
   # This register configures the duration threshold for Shock event
@@ -635,16 +638,16 @@ class Driver:
   # the BMI160 Data Sheet.
   #
   # @return Current shock duration threshold value (LSB = 2.5ms, 0 = 2.5ms)
-  # @see registers.INT_LOWHIGH_3
+  # @see registers_imu.INT_LOWHIGH_3
   def getShockDetectionDuration(self):
-    return self._reg_read(registers.INT_LOWHIGH_3)
+    return self._reg_read(registers_imu.INT_LOWHIGH_3)
 
   # Set free-fall event duration threshold.
   # @param duration New free-fall duration threshold value (LSB = 2.5ms, 0 = 2.5ms)
   # @see getFreefallDetectionDuration()
-  # @see registers.INT_LOWHIGH_3
+  # @see registers_imu.INT_LOWHIGH_3
   def setShockDetectionDuration(self, duration):
-    self._reg_write(registers.INT_LOWHIGH_3, duration)
+    self._reg_write(registers_imu.INT_LOWHIGH_3, duration)
 
   # Get Step Detection mode.
   # Returns an enum value which corresponds to current mode
@@ -656,23 +659,23 @@ class Driver:
   # 2.11.37 of the BMI160 Data Sheet.
   #
   # @return Current configuration of the step detector
-  # @see registers.STEP_CONF_0
-  # @see registers.STEP_CONF_1
+  # @see registers_imu.STEP_CONF_0
+  # @see registers_imu.STEP_CONF_1
   def getStepDetectionMode(self):
     ret_step_conf0 = 0
     ret_min_step_buf = 0
 
-    ret_step_conf0 = self._reg_read(registers.STEP_CONF_0)
+    ret_step_conf0 = self._reg_read(registers_imu.STEP_CONF_0)
 
     # min_step_buf is the first 3 bits of RA_STEP_CONF_1
     # the 4th bit is the enable bit (step_cnt_en)
-    ret_min_step_buf = self._reg_read_bits(registers.STEP_CONF_1, 0, 3)
+    ret_min_step_buf = self._reg_read_bits(registers_imu.STEP_CONF_1, 0, 3)
 
-    if ((ret_step_conf0 == registers.STEP_CONF_0_NOR) and (ret_min_step_buf == registers.STEP_CONF_1_NOR)):
+    if ((ret_step_conf0 == registers_imu.STEP_CONF_0_NOR) and (ret_min_step_buf == registers_imu.STEP_CONF_1_NOR)):
       return definitions.STEP_MODE_NORMAL
-    elif ((ret_step_conf0 == registers.STEP_CONF_0_SEN) and (ret_min_step_buf == registers.STEP_CONF_1_SEN)):
+    elif ((ret_step_conf0 == registers_imu.STEP_CONF_0_SEN) and (ret_min_step_buf == registers_imu.STEP_CONF_1_SEN)):
       return definitions.STEP_MODE_SENSITIVE
-    elif ((ret_step_conf0 == registers.STEP_CONF_0_ROB) and (ret_min_step_buf == registers.STEP_CONF_1_ROB)):
+    elif ((ret_step_conf0 == registers_imu.STEP_CONF_0_ROB) and (ret_min_step_buf == registers_imu.STEP_CONF_1_ROB)):
       return definitions.STEP_MODE_ROBUST
     else:
       return definitions.STEP_MODE_UNKNOWN
@@ -688,8 +691,8 @@ class Driver:
   # on Step Detection configuration.
   #
   # @return Set Step Detection mode
-  # @see registers.STEP_CONF_0
-  # @see registers.STEP_CONF_1
+  # @see registers_imu.STEP_CONF_0
+  # @see registers_imu.STEP_CONF_1
   # @see BMI160StepMode
   def setStepDetectionMode(self, mode):
     step_conf0 = 0
@@ -709,8 +712,8 @@ class Driver:
       # Unrecognised mode option
       return
 
-    self._reg_write(registers.STEP_CONF_0, step_conf0)
-    self._reg_write_bits(registers.STEP_CONF_1, min_step_buf,
+    self._reg_write(registers_imu.STEP_CONF_0, step_conf0)
+    self._reg_write_bits(registers_imu.STEP_CONF_1, min_step_buf,
       definitions.STEP_BUF_MIN_BIT, definitions.STEP_BUF_MIN_LEN)
 
   # Get Step Counter enabled status.
@@ -722,19 +725,19 @@ class Driver:
   # 2.7 of the BMI160 Data Sheet.
   #
   # @return Current Step Counter enabled status
-  # @see registers.STEP_CONF_1
+  # @see registers_imu.STEP_CONF_1
   # @see definitions.STEP_CNT_EN_BIT
   def getStepCountEnabled(self):
-    return 0 != (self._reg_read_bits(registers.STEP_CONF_1, definitions.STEP_CNT_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.STEP_CONF_1, definitions.STEP_CNT_EN_BIT, 1))
 
   # Set Step Counter enabled status.
   #
   # @return Set Step Counter enabled
   # @see getStepCountEnabled()
-  # @see registers.STEP_CONF_1
+  # @see registers_imu.STEP_CONF_1
   # @see definitions.STEP_CNT_EN_BIT
   def setStepCountEnabled(self, enabled):
-    return self._reg_write_bits(registers.STEP_CONF_1, 0x1 if enabled else 0, definitions.STEP_CNT_EN_BIT, 1)
+    return self._reg_write_bits(registers_imu.STEP_CONF_1, 0x1 if enabled else 0, definitions.STEP_CNT_EN_BIT, 1)
 
   # Get current number of detected step movements (Step Count).
   # Returns a step counter which is incremented when step movements are detected
@@ -743,19 +746,19 @@ class Driver:
   # @return Number of steps as an unsigned 16-bit integer
   # @see setStepCountEnabled()
   # @see setStepDetectionMode()
-  # @see registers.STEP_CNT_L
+  # @see registers_imu.STEP_CNT_L
   def getStepCount(self):
     buffer = [0]*2
-    buffer[0] = self._reg_read(registers.STEP_CNT_L)
-    buffer[1] = self._reg_read(registers.STEP_CNT_H)
+    buffer[0] = self._reg_read(registers_imu.STEP_CNT_L)
+    buffer[1] = self._reg_read(registers_imu.STEP_CNT_H)
     return ((buffer[1]) << 8) | buffer[0]
 
   # Resets the current number of detected step movements (Step Count) to 0.
   #
   # @see getStepCount()
-  # @see registers.CMD
+  # @see registers_common.CMD
   def resetStepCount(self):
-    self._reg_write(registers.CMD, commands.STEP_CNT_CLR)
+    self._reg_write(registers_common.CMD, commands.STEP_CNT_CLR)
 
   # Get motion detection event acceleration threshold.
   # This register configures the detection threshold for Motion interrupt
@@ -776,26 +779,26 @@ class Driver:
   # consecutive accelerometer measurements for the 3 axes exceeds this Motion
   # detection threshold. This condition triggers the Motion interrupt if the
   # condition is maintained for the sample count interval specified in the
-  # int_anym_dur field of the INT_MOTION[0] register (@see registers.INT_MOTION_0)
+  # int_anym_dur field of the INT_MOTION[0] register (@see registers_imu.INT_MOTION_0)
   #
   # The Motion interrupt will indicate the axis and polarity of detected motion
-  # in INT_STATUS[2] (@see registers.INT_STATUS_2).
+  # in INT_STATUS[2] (@see registers_imu.INT_STATUS_2).
   #
   # For more details on the Motion detection interrupt, see Section 2.6.1 of the
   # BMI160 Data Sheet.
   #
   # @return Current motion detection acceleration threshold value
   # @see getMotionDetectionDuration()
-  # @see registers.INT_MOTION_1
+  # @see registers_imu.INT_MOTION_1
   def getMotionDetectionThreshold(self):
-    return self._reg_read(registers.INT_MOTION_1)
+    return self._reg_read(registers_imu.INT_MOTION_1)
 
   # Set motion detection event acceleration threshold.
   # @param threshold New motion detection acceleration threshold value
   # @see getMotionDetectionThreshold()
-  # @see registers.INT_MOTION_1
+  # @see registers_imu.INT_MOTION_1
   def setMotionDetectionThreshold(self, threshold):
-    return self._reg_write(registers.INT_MOTION_1, threshold)
+    return self._reg_write(registers_imu.INT_MOTION_1, threshold)
 
   # Get motion detection event duration threshold.
   # This register configures the duration counter threshold for Motion interrupt
@@ -812,16 +815,16 @@ class Driver:
   #
   # @return Current motion detection duration threshold value (#samples [1-4])
   # @see getMotionDetectionThreshold()
-  # @see registers.INT_MOTION_0
+  # @see registers_imu.INT_MOTION_0
   def getMotionDetectionDuration(self):
-    return 1 + self._reg_read_bits(registers.INT_MOTION_0, definitions.ANYMOTION_DUR_BIT, definitions.ANYMOTION_DUR_LEN)
+    return 1 + self._reg_read_bits(registers_imu.INT_MOTION_0, definitions.ANYMOTION_DUR_BIT, definitions.ANYMOTION_DUR_LEN)
 
   # Set motion detection event duration threshold.
   # @param duration New motion detection duration threshold value (#samples [1-4])
   # @see getMotionDetectionDuration()
-  # @see registers.INT_MOTION_0
+  # @see registers_imu.INT_MOTION_0
   def setMotionDetectionDuration(self, samples):
-    self._reg_write_bits(registers.INT_MOTION_0, samples - 1,
+    self._reg_write_bits(registers_imu.INT_MOTION_0, samples - 1,
       definitions.ANYMOTION_DUR_BIT, definitions.ANYMOTION_DUR_LEN)
 
   # Get zero motion detection event acceleration threshold.
@@ -844,7 +847,7 @@ class Driver:
   # this Motion detection threshold. This condition triggers the Zero Motion
   # interrupt if the condition is maintained for a time duration
   # specified in the int_slo_no_mot_dur field of the INT_MOTION[0] register (@see
-  # registers.INT_MOTION_0), and clears the interrupt when the condition is
+  # registers_imu.INT_MOTION_0), and clears the interrupt when the condition is
   # then absent for the same duration.
   #
   # For more details on the Zero Motion detection interrupt, see Section 2.6.9 of
@@ -852,16 +855,16 @@ class Driver:
   #
   # @return Current zero motion detection acceleration threshold value
   # @see getZeroMotionDetectionDuration()
-  # @see registers.INT_MOTION_2
+  # @see registers_imu.INT_MOTION_2
   def getZeroMotionDetectionThreshold(self):
-    return self._reg_read(registers.INT_MOTION_2)
+    return self._reg_read(registers_imu.INT_MOTION_2)
 
   # Set zero motion detection event acceleration threshold.
   # @param threshold New zero motion detection acceleration threshold value
   # @see getZeroMotionDetectionThreshold()
-  # @see registers.INT_MOTION_2
+  # @see registers_imu.INT_MOTION_2
   def setZeroMotionDetectionThreshold(self, threshold):
-    self._reg_write(registers.INT_MOTION_2, threshold)
+    self._reg_write(registers_imu.INT_MOTION_2, threshold)
 
   # Get zero motion detection event duration threshold.
   # This register configures the duration time for Zero Motion interrupt
@@ -885,10 +888,10 @@ class Driver:
   # @return Current zero motion detection duration threshold value
   #       @see BMI160ZeroMotionDuration for a list of possible values
   # @see getZeroMotionDetectionThreshold()
-  # @see registers.INT_MOTION_0
+  # @see registers_imu.INT_MOTION_0
   # @see BMI160ZeroMotionDuration
   def getZeroMotionDetectionDuration(self):
-    return self._reg_read_bits(registers.INT_MOTION_0, definitions.NOMOTION_DUR_BIT, definitions.NOMOTION_DUR_LEN)
+    return self._reg_read_bits(registers_imu.INT_MOTION_0, definitions.NOMOTION_DUR_BIT, definitions.NOMOTION_DUR_LEN)
 
   # Set zero motion detection event duration threshold.
   #
@@ -897,10 +900,10 @@ class Driver:
   # @param duration New zero motion detection duration threshold value
   #      @see BMI160ZeroMotionDuration for a list of valid values
   # @see getZeroMotionDetectionDuration()
-  # @see registers.INT_MOTION_0
+  # @see registers_imu.INT_MOTION_0
   # @see BMI160ZeroMotionDuration
   def setZeroMotionDetectionDuration(self, duration):
-    self._reg_write_bits(registers.INT_MOTION_0, duration,
+    self._reg_write_bits(registers_imu.INT_MOTION_0, duration,
       definitions.NOMOTION_DUR_BIT, definitions.NOMOTION_DUR_LEN)
 
   # Get Tap event acceleration threshold.
@@ -926,16 +929,16 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current shock acceleration threshold value
-  # @see registers.INT_TAP_1
+  # @see registers_imu.INT_TAP_1
   def getTapDetectionThreshold(self):
-    return self._reg_read_bits(registers.INT_TAP_1, definitions.TAP_THRESH_BIT, definitions.TAP_THRESH_LEN)
+    return self._reg_read_bits(registers_imu.INT_TAP_1, definitions.TAP_THRESH_BIT, definitions.TAP_THRESH_LEN)
 
   # Set tap event acceleration threshold.
   # @param threshold New tap acceleration threshold value
   # @see getTapDetectionThreshold()
-  # @see registers.INT_TAP_1
+  # @see registers_imu.INT_TAP_1
   def setTapDetectionThreshold(self, threshold):
-    self._reg_write_bits(registers.INT_TAP_1, threshold,
+    self._reg_write_bits(registers_imu.INT_TAP_1, threshold,
       definitions.TAP_THRESH_BIT, definitions.TAP_THRESH_LEN)
 
   # Get tap shock detection duration.
@@ -955,19 +958,19 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current tap detection duration threshold value
-  # @see registers.INT_TAP_0
+  # @see registers_imu.INT_TAP_0
   # @see BMI160TapShockDuration
   def getTapShockDuration(self):
-    return 0 != (self._reg_read_bits(registers.INT_TAP_0, definitions.TAP_SHOCK_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_TAP_0, definitions.TAP_SHOCK_BIT, 1))
 
   # Set tap shock detection event duration threshold.
   #
   # @param units New tap detection duration threshold value
   # @see getTapShockDetectionDuration()
-  # @see registers.INT_TAP_0
+  # @see registers_imu.INT_TAP_0
   def setTapShockDuration(self, duration):
     self._reg_write_bits(
-      registers.INT_TAP_0, 0x1 if duration else 0, definitions.TAP_SHOCK_BIT, 1)
+      registers_imu.INT_TAP_0, 0x1 if duration else 0, definitions.TAP_SHOCK_BIT, 1)
 
   # Get tap quiet duration threshold.
   # This register configures the quiet duration for double-tap event detection.
@@ -986,19 +989,19 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current tap quiet detection duration threshold value
-  # @see registers.INT_TAP_0
+  # @see registers_imu.INT_TAP_0
   # @see BMI160TapQuietDuration
   def getTapQuietDuration(self):
-    return 0 != (self._reg_read_bits(registers.INT_TAP_0, definitions.TAP_QUIET_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_TAP_0, definitions.TAP_QUIET_BIT, 1))
 
   # Set tap quiet duration threshold.
   #
   # @param units New tap detection duration threshold value
   # @see getTapQuietDuration()
-  # @see registers.INT_TAP_0
+  # @see registers_imu.INT_TAP_0
   def setTapQuietDuration(self, duration):
     self._reg_write_bits(
-      registers.INT_TAP_0, 0x1 if duration else 0, definitions.TAP_QUIET_BIT, 1)
+      registers_imu.INT_TAP_0, 0x1 if duration else 0, definitions.TAP_QUIET_BIT, 1)
 
   # Get double-tap detection time window length.
   # This register configures the length of time window between 2 tap events for
@@ -1024,228 +1027,228 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current double-tap detection time window threshold value
-  # @see registers.INT_TAP_0
+  # @see registers_imu.INT_TAP_0
   # @see BMI160DoubleTapDuration
   def getDoubleTapDetectionDuration(self):
-    return self._reg_read_bits(registers.INT_TAP_0, definitions.TAP_DUR_BIT, definitions.TAP_DUR_LEN)
+    return self._reg_read_bits(registers_imu.INT_TAP_0, definitions.TAP_DUR_BIT, definitions.TAP_DUR_LEN)
 
   # Set double-tap detection event duration threshold.
   #
   # @param duration New double-tap detection time window threshold value
   # @see getDoubleTapDetectionDuration()
-  # @see registers.INT_TAP_0
+  # @see registers_imu.INT_TAP_0
   def setDoubleTapDetectionDuration(self, duration):
-    self._reg_write_bits(registers.INT_TAP_0, duration,
+    self._reg_write_bits(registers_imu.INT_TAP_0, duration,
       definitions.TAP_DUR_BIT, definitions.TAP_DUR_LEN)
 
   # Get Free Fall interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.LOW_G_EN_BIT
   # */
   def getIntFreefallEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_1, definitions.LOW_G_EN_BIT, definitions.LOW_G_EN_LEN))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_1, definitions.LOW_G_EN_BIT, definitions.LOW_G_EN_LEN))
 
   # Set Free Fall interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntFreefallEnabled()
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.LOW_G_EN_BIT
   # */
   def setIntFreefallEnabled(self, enabled):
-    self._reg_write_bits(registers.INT_EN_1, 0x1 if enabled else 0,
+    self._reg_write_bits(registers_imu.INT_EN_1, 0x1 if enabled else 0,
       durationdefinitions.LOW_G_EN_BIT, durationdefinitions.LOW_G_EN_LEN)
 
   # Get Shock interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.HIGH_G_EN_BIT
   # */
   def getIntShockEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_1, definitions.HIGH_G_EN_BIT, definitions.HIGH_G_EN_LEN))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_1, definitions.HIGH_G_EN_BIT, definitions.HIGH_G_EN_LEN))
 
   # Set Shock interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntShockEnabled()
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.HIGH_G_EN_BIT
   # */
   def setIntShockEnabled(self, enabled):
-    self._reg_write_bits(registers.INT_EN_1, 0x7 if enabled else 0x0,
+    self._reg_write_bits(registers_imu.INT_EN_1, 0x7 if enabled else 0x0,
       definitions.HIGH_G_EN_BIT, definitions.HIGH_G_EN_LEN)
 
   # Get Step interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_2
+  # @see registers_imu.INT_EN_2
   # @see definitions.STEP_EN_BIT
   # */
   def getIntStepEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_2, definitions.STEP_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_2, definitions.STEP_EN_BIT, 1))
 
   # Set Step interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntStepEnabled()
-  # @see registers.INT_EN_2
+  # @see registers_imu.INT_EN_2
   # @see definitions.STEP_EN_BIT
   # */
   def setIntStepEnabled(self, enabled):
     self._reg_write_bits(
-      registers.INT_EN_2, 0x1 if enabled else 0x0, definitions.STEP_EN_BIT, 1)
+      registers_imu.INT_EN_2, 0x1 if enabled else 0x0, definitions.STEP_EN_BIT, 1)
 
   # Get Motion Detection interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_0
+  # @see registers_imu.INT_EN_0
   # @see definitions.ANYMOTION_EN_BIT
   # */
   def getIntMotionEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_0, definitions.ANYMOTION_EN_BIT, definitions.ANYMOTION_EN_LEN))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_0, definitions.ANYMOTION_EN_BIT, definitions.ANYMOTION_EN_LEN))
 
   # Set Motion Detection interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntMotionEnabled()
-  # @see registers.INT_EN_0
+  # @see registers_imu.INT_EN_0
   # @see definitions.ANYMOTION_EN_BIT
   # */
   def setIntMotionEnabled(self, enabled):
     # Enable for all 3 axes
-    self._reg_write_bits(registers.INT_EN_0, 0x7 if enabled else 0x0,
+    self._reg_write_bits(registers_imu.INT_EN_0, 0x7 if enabled else 0x0,
       definitions.ANYMOTION_EN_BIT, definitions.ANYMOTION_EN_LEN)
 
   # Get Zero Motion Detection interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_2
+  # @see registers_imu.INT_EN_2
   # @see definitions.NOMOTION_EN_BIT
   # */
   def getIntZeroMotionEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_2, definitions.NOMOTION_EN_BIT, definitions.NOMOTION_EN_LEN))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_2, definitions.NOMOTION_EN_BIT, definitions.NOMOTION_EN_LEN))
 
   # Set Zero Motion Detection interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntZeroMotionEnabled()
-  # @see registers.INT_EN_2
+  # @see registers_imu.INT_EN_2
   # @see definitions.NOMOTION_EN_BIT
-  # @see registers.INT_MOTION_3
+  # @see registers_imu.INT_MOTION_3
   # */
   def setIntZeroMotionEnabled(self, enabled):
     if (enabled):
       # Select No-Motion detection mode
-      self._reg_write_bits(registers.INT_MOTION_3, 0x1,
+      self._reg_write_bits(registers_imu.INT_MOTION_3, 0x1,
         definitions.NOMOTION_SEL_BIT, definitions.NOMOTION_SEL_LEN)
     # Enable for all 3 axes
-    self._reg_write_bits(registers.INT_EN_2, 0x7 if enabled else 0x0,
+    self._reg_write_bits(registers_imu.INT_EN_2, 0x7 if enabled else 0x0,
       definitions.NOMOTION_EN_BIT, definitions.NOMOTION_EN_LEN)
 
   # Get Tap Detection interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_0
+  # @see registers_imu.INT_EN_0
   # @see definitions.S_TAP_EN_BIT
   # */
   def getIntTapEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_0, definitions.S_TAP_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_0, definitions.S_TAP_EN_BIT, 1))
 
   # Set Tap Detection interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntTapEnabled()
-  # @see registers.INT_EN_0
+  # @see registers_imu.INT_EN_0
   # @see definitions.S_TAP_EN_BIT
   # */
   def setIntTapEnabled(self, enabled):
     self._reg_write_bits(
-      registers.INT_EN_0, 0x1 if enabled else 0, definitions.S_TAP_EN_BIT, 1)
+      registers_imu.INT_EN_0, 0x1 if enabled else 0, definitions.S_TAP_EN_BIT, 1)
 
   # Get Tap Detection interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_0
+  # @see registers_imu.INT_EN_0
   # @see definitions.D_TAP_EN_BIT
   # */
   def getIntDoubleTapEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_0, definitions.D_TAP_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_0, definitions.D_TAP_EN_BIT, 1))
 
   # Set Tap Detection interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntTapEnabled()
-  # @see registers.INT_EN_0
+  # @see registers_imu.INT_EN_0
   # @see definitions.D_TAP_EN_BIT
   # */
   def setIntDoubleTapEnabled(self, enabled):
     self._reg_write_bits(
-      registers.INT_EN_0, 0x1 if enabled else 0, definitions.D_TAP_EN_BIT, 1)
+      registers_imu.INT_EN_0, 0x1 if enabled else 0, definitions.D_TAP_EN_BIT, 1)
 
   # Get FIFO Buffer Full interrupt enabled status.
   # Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.FFULL_EN_BIT
   # */
   def getIntFIFOBufferFullEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_1, definitions.FFULL_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_1, definitions.FFULL_EN_BIT, 1))
 
   # Set FIFO Buffer Full interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntFIFOBufferFullEnabled()
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.FFULL_EN_BIT
   # */
   def setIntFIFOBufferFullEnabled(self, enabled):
     self._reg_write_bits(
-      registers.INT_EN_1, 0x1 if enabled else 0x0, definitions.FFULL_EN_BIT, 1)
+      registers_imu.INT_EN_1, 0x1 if enabled else 0x0, definitions.FFULL_EN_BIT, 1)
 
   # Get Data Ready interrupt enabled setting.
   # This event occurs each time a write operation to all of the sensor registers
   # has been completed. Will be set 0 for disabled, 1 for enabled.
   # @return Current interrupt enabled status
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.DRDY_EN_BIT
   def getIntDataReadyEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_EN_1, definitions.DRDY_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_EN_1, definitions.DRDY_EN_BIT, 1))
 
   # Set Data Ready interrupt enabled status.
   # @param enabled New interrupt enabled status
   # @see getIntDataReadyEnabled()
-  # @see registers.INT_EN_1
+  # @see registers_imu.INT_EN_1
   # @see definitions.DRDY_EN_BIT
   def setIntDataReadyEnabled(self, enabled):
     self._reg_write_bits(
-      registers.INT_EN_1, 0x1 if enabled else 0x0, definitions.DRDY_EN_BIT, 1)
+      registers_imu.INT_EN_1, 0x1 if enabled else 0x0, definitions.DRDY_EN_BIT, 1)
 
   # Get accelerometer FIFO enabled value.
   # When set to 1, this bit enables accelerometer data samples to be
   # written into the FIFO buffer.
   # @return Current accelerometer FIFO enabled value
-  # @see registers.FIFO_CONFIG_1
+  # @see registers_imu.FIFO_CONFIG_1
   def getAccelFIFOEnabled(self):
-    return 0 != (self._reg_read_bits(registers.FIFO_CONFIG_1, definitions.FIFO_ACC_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.FIFO_CONFIG_1, definitions.FIFO_ACC_EN_BIT, 1))
 
   # Set accelerometer FIFO enabled value.
   # @param enabled New accelerometer FIFO enabled value
   # @see getAccelFIFOEnabled()
-  # @see registers.FIFO_CONFIG_1
+  # @see registers_imu.FIFO_CONFIG_1
   def setAccelFIFOEnabled(self, enabled):
     self._reg_write_bits(
-      registers.FIFO_CONFIG_1, 0x1 if enabled else 0, definitions.FIFO_ACC_EN_BIT, 1)
+      registers_imu.FIFO_CONFIG_1, 0x1 if enabled else 0, definitions.FIFO_ACC_EN_BIT, 1)
 
   # Get gyroscope FIFO enabled value.
   # When set to 1, this bit enables gyroscope data samples to be
   # written into the FIFO buffer.
   # @return Current gyroscope FIFO enabled value
-  # @see registers.FIFO_CONFIG_1
+  # @see registers_imu.FIFO_CONFIG_1
   def getGyroFIFOEnabled(self):
-    return 0 != (self._reg_read_bits(registers.FIFO_CONFIG_1, definitions.FIFO_GYR_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.FIFO_CONFIG_1, definitions.FIFO_GYR_EN_BIT, 1))
 
   # Set gyroscope FIFO enabled value.
   # @param enabled New gyroscope FIFO enabled value
   # @see getGyroFIFOEnabled()
-  # @see registers.FIFO_CONFIG_1
+  # @see registers_imu.FIFO_CONFIG_1
   def setGyroFIFOEnabled(self, enabled):
     self._reg_write_bits(
-      registers.FIFO_CONFIG_1, 0x1 if enabled else 0, definitions.FIFO_GYR_EN_BIT, 1)
+      registers_imu.FIFO_CONFIG_1, 0x1 if enabled else 0, definitions.FIFO_GYR_EN_BIT, 1)
 
   # Get current FIFO buffer size.
   # This value indicates the number of bytes stored in the FIFO buffer. This
@@ -1256,28 +1259,28 @@ class Driver:
   # FIFO. See @ref getFIFOHeaderModeEnabled().
   #
   # @return Current FIFO buffer size
-  # @see registers.FIFO_LENGTH_0
+  # @see registers_imu.FIFO_LENGTH_0
   def getFIFOCount(self):
     buffer = [0]*2
-    buffer[0] = registers.FIFO_LENGTH_0
+    buffer[0] = registers_imu.FIFO_LENGTH_0
     return ((buffer[1]) << 8) | buffer[0]
 
   # Reset the FIFO.
   # This command clears all data in the FIFO buffer.  It is recommended
   # to invoke this after reconfiguring the FIFO.
   #
-  # @see registers.CMD
+  # @see registers_common.CMD
   # @see commands.FIFO_FLUSH
   def resetFIFO(self):
-    self._reg_write(registers.CMD, commands.FIFO_FLUSH)
+    self._reg_write(registers_common.CMD, commands.FIFO_FLUSH)
 
   # Reset the Interrupt controller.
   # This command clears interrupt status registers and latched interrupts.
   #
-  # @see registers.CMD
+  # @see registers_common.CMD
   # @see commands.FIFO_FLUSH
   def resetInterrupt(self):
-    self._reg_write(registers.CMD, commands.INT_RESET)
+    self._reg_write(registers_common.CMD, commands.INT_RESET)
 
   # Get FIFO Header-Mode enabled status.
   # When this bit is set to 0, the FIFO header-mode is disabled, and frames
@@ -1289,19 +1292,19 @@ class Driver:
   # to Section 2.5 of the BMI160 Data Sheet.
   #
   # @return Current FIFO Header-Mode enabled status
-  # @see registers.FIFO_CONFIG_1
+  # @see registers_imu.FIFO_CONFIG_1
   # @see definitions.FIFO_HEADER_EN_BIT
   def getFIFOHeaderModeEnabled(self):
-    return 0 != (self._reg_read_bits(registers.FIFO_CONFIG_1, definitions.FIFO_HEADER_EN_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_imu.FIFO_CONFIG_1, definitions.FIFO_HEADER_EN_BIT, 1))
 
   # Set FIFO Header-Mode enabled status.
   # @param enabled New FIFO Header-Mode enabled status
   # @see getFIFOHeaderModeEnabled()
-  # @see registers.FIFO_CONFIG_1
+  # @see registers_imu.FIFO_CONFIG_1
   # @see definitions.FIFO_HEADER_EN_BIT
   def setFIFOHeaderModeEnabled(self, enabled):
     self._reg_write_bits(
-      registers.FIFO_CONFIG_1, 0x1 if enabled else 0, definitions.FIFO_HEADER_EN_BIT, 1)
+      registers_imu.FIFO_CONFIG_1, 0x1 if enabled else 0, definitions.FIFO_HEADER_EN_BIT, 1)
 
   # Get data frames from FIFO buffer.
   # This register is used to read and write data frames from the FIFO buffer.
@@ -1329,39 +1332,39 @@ class Driver:
   def getFIFOBytes(self, *data, length):
     # TODO fix here
     if (length):
-      data[0] = registers.FIFO_DATA
+      data[0] = registers_imu.FIFO_DATA
 
   # Get full set of interrupt status bits from INT_STATUS[0] register.
   # Interrupts are typically cleared automatically.
   # Please refer to the BMI160 Data Sheet for more information.
   # @return Current interrupt status
-  # @see registers.INT_STATUS_0
+  # @see registers_common.INT_STATUS_0
   def getIntStatus0(self):
-    return self._reg_read(registers.INT_STATUS_0)
+    return self._reg_read(registers_common.INT_STATUS_0)
 
   # Get full set of interrupt status bits from INT_STATUS[1] register.
   # Interrupts are typically cleared automatically.
   # Please refer to the BMI160 Data Sheet for more information.
   # @return Current interrupt status
-  # @see registers.INT_STATUS_1
+  # @see registers_common.INT_STATUS_1
   def getIntStatus1():
-    return self._reg_read(registers.INT_STATUS_1)
+    return self._reg_read(registers_common.INT_STATUS_1)
 
   # Get full set of interrupt status bits from INT_STATUS[2] register.
   # Interrupts are typically cleared automatically.
   # Please refer to the BMI160 Data Sheet for more information.
   # @return Current interrupt status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   def getIntStatus2(self):
-    return self._reg_read(registers.INT_STATUS_2)
+    return self._reg_read(registers_imu.INT_STATUS_2)
 
   # Get full set of interrupt status bits from INT_STATUS[3] register.
   # Interrupts are typically cleared automatically.
   # Please refer to the BMI160 Data Sheet for more information.
   # @return Current interrupt status
-  # @see registers.INT_STATUS_3
+  # @see registers_imu.INT_STATUS_3
   def getIntStatus3(self):
-    return self._reg_read(registers.INT_STATUS_3)
+    return self._reg_read(registers_imu.INT_STATUS_3)
 
   # Get Free Fall interrupt status.
   # This bit automatically sets to 1 when a Free Fall condition
@@ -1371,10 +1374,10 @@ class Driver:
   # 2.6.7 of the BMI160 Data Sheet.
   #
   # @return Current interrupt status
-  # @see registers.INT_STATUS_1
+  # @see registers_common.INT_STATUS_1
   # @see definitions.LOW_G_INT_BIT
   def getIntFreefallStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_1, definitions.LOW_G_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_1, definitions.LOW_G_INT_BIT, 1))
 
   # Get Tap Detection interrupt status.
   # This bit automatically sets to 1 when a Tap Detection condition
@@ -1384,10 +1387,10 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current interrupt status
-  # @see registers.INT_STATUS_0
+  # @see registers_common.INT_STATUS_0
   # @see definitions.S_TAP_INT_BIT
   def getIntTapStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_0, definitions.S_TAP_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_0, definitions.S_TAP_INT_BIT, 1))
 
   # Get Double-Tap Detection interrupt status.
   # This bit automatically sets to 1 when a Double-Tap Detection condition
@@ -1397,10 +1400,10 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current interrupt status
-  # @see registers.INT_STATUS_0
+  # @see registers_common.INT_STATUS_0
   # @see definitions.D_TAP_INT_BIT
   def getIntDoubleTapStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_0, definitions.D_TAP_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_0, definitions.D_TAP_INT_BIT, 1))
 
   # Get Shock interrupt status.
   # This bit automatically sets to 1 when a Shock (High-G) Detection condition
@@ -1410,63 +1413,63 @@ class Driver:
   # 2.6.8 of the BMI160 Data Sheet.
   #
   # @return Current interrupt status
-  # @see registers.INT_STATUS_1
+  # @see registers_common.INT_STATUS_1
   # @see definitions.HIGH_G_INT_BIT
   def getIntShockStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_1, definitions.HIGH_G_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_1, definitions.HIGH_G_INT_BIT, 1))
 
   # Check if shock interrupt was triggered by negative X-axis motion
   # @return Shock detection status
-  # @see registers.INT_STATUS_3
+  # @see registers_imu.INT_STATUS_3
   # @see definitions.HIGH_G_SIGN_BIT
   # @see definitions.HIGH_G_1ST_X_BIT
   def getXNegShockDetected(self):
-    status = self._reg_read(registers.INT_STATUS_3)
+    status = self._reg_read(registers_imu.INT_STATUS_3)
     return 0 != ((status & (1 << definitions.HIGH_G_SIGN_BIT)) and (status & (1 << definitions.HIGH_G_1ST_X_BIT)))
 
   # Check if shock interrupt was triggered by positive X-axis motion
   # @return Shock detection status
-  # @see registers.INT_STATUS_3
+  # @see registers_imu.INT_STATUS_3
   # @see definitions.HIGH_G_SIGN_BIT
   # @see definitions.HIGH_G_1ST_X_BIT
   def getXPosShockDetected(self):
-    status = self._reg_read(registers.INT_STATUS_3)
+    status = self._reg_read(registers_imu.INT_STATUS_3)
     return 0 != (not (status & (1 << definitions.HIGH_G_SIGN_BIT)) and (status & (1 << definitions.HIGH_G_1ST_X_BIT)))
 
   # Check if shock interrupt was triggered by negative Y-axis motion
   # @return Shock detection status
-  # @see registers.INT_STATUS_3
+  # @see registers_imu.INT_STATUS_3
   # @see definitions.HIGH_G_SIGN_BIT
   # @see definitions.HIGH_G_1ST_Y_BIT
   def getYNegShockDetected(self):
-    status = self._reg_read(registers.INT_STATUS_3)
+    status = self._reg_read(registers_imu.INT_STATUS_3)
     return 0 != ((status & (1 << definitions.HIGH_G_SIGN_BIT)) and (status & (1 << definitions.HIGH_G_1ST_Y_BIT)))
 
   # Check if shock interrupt was triggered by positive Y-axis motion
   # @return Shock detection status
-  # @see registers.INT_STATUS_3
+  # @see registers_imu.INT_STATUS_3
   # @see definitions.HIGH_G_SIGN_BIT
   # @see definitions.HIGH_G_1ST_Y_BIT
   def getYPosShockDetected(self):
-    status = self._reg_read(registers.INT_STATUS_3)
+    status = self._reg_read(registers_imu.INT_STATUS_3)
     return 0 != (not (status & (1 << definitions.HIGH_G_SIGN_BIT)) and (status & (1 << definitions.HIGH_G_1ST_Y_BIT)))
 
   # Check if shock interrupt was triggered by negative Z-axis motion
   # @return Shock detection status
-  # @see registers.INT_STATUS_3
+  # @see registers_imu.INT_STATUS_3
   # @see definitions.HIGH_G_SIGN_BIT
   # @see definitions.HIGH_G_1ST_Z_BIT
   def getZNegShockDetected(self):
-    status = self._reg_read(registers.INT_STATUS_3)
+    status = self._reg_read(registers_imu.INT_STATUS_3)
     return 0 != ((status & (1 << definitions.HIGH_G_SIGN_BIT)) and (status & (1 << definitions.HIGH_G_1ST_Z_BIT)))
 
   # Check if shock interrupt was triggered by positive Z-axis motion
   # @return Shock detection status
-  # @see registers.INT_STATUS_3
+  # @see registers_imu.INT_STATUS_3
   # @see definitions.HIGH_G_SIGN_BIT
   # @see definitions.HIGH_G_1ST_Z_BIT
   def getZPosShockDetected(self):
-    status = self._reg_read(registers.INT_STATUS_3)
+    status = self._reg_read(registers_imu.INT_STATUS_3)
     return 0 != (not (status & (1 << definitions.HIGH_G_SIGN_BIT)) and (status & (1 << definitions.HIGH_G_1ST_Z_BIT)))
 
   # Get Step interrupt status.
@@ -1477,10 +1480,10 @@ class Driver:
   # 2.6.3 of the BMI160 Data Sheet.
   #
   # @return Current interrupt status
-  # @see registers.INT_STATUS_0
+  # @see registers_common.INT_STATUS_0
   # @see definitions.STEP_INT_BIT
   def getIntStepStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_0, definitions.STEP_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_0, definitions.STEP_INT_BIT, 1))
 
   # Get Motion Detection interrupt status.
   # This bit automatically sets to 1 when a Motion Detection condition
@@ -1490,117 +1493,117 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current interrupt status
-  # @see registers.INT_STATUS_0
+  # @see registers_common.INT_STATUS_0
   # @see definitions.ANYMOTION_INT_BIT
   def getIntMotionStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_0, definitions.ANYMOTION_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_0, definitions.ANYMOTION_INT_BIT, 1))
 
   # Check if motion interrupt was triggered by negative X-axis motion
   # @return Motion detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.ANYMOTION_SIGN_BIT
   # @see definitions.ANYMOTION_1ST_X_BIT
   def getXNegMotionDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != ((status & (1 << definitions.ANYMOTION_SIGN_BIT)) and (status & (1 << definitions.ANYMOTION_1ST_X_BIT)))
 
   # Check if motion interrupt was triggered by positive X-axis motion
   # @return Motion detection status
-  # @seefrom struct import unpack registers.INT_STATUS_2
+  # @seefrom struct import unpack registers_imu.INT_STATUS_2
   # @see definitions.ANYMOTION_SIGN_BIT
   # @see definitions.ANYMOTION_1ST_X_BIT
   def getXPosMotionDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != (not (status & (1 << definitions.ANYMOTION_SIGN_BIT)) and (status & (1 << definitions.ANYMOTION_1ST_X_BIT)))
 
   # Check if motion interrupt was triggered by negative Y-axis motion
   # @return Motion detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.ANYMOTION_SIGN_BIT
   # @see definitions.ANYMOTION_1ST_Y_BIT
   def getYNegMotionDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != ((status & (1 << definitions.ANYMOTION_SIGN_BIT)) and (status & (1 << definitions.ANYMOTION_1ST_Y_BIT)))
 
   # Check if motion interrupt was triggered by positive Y-axis motion
   # @return Motion detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.ANYMOTION_SIGN_BIT
   # @see definitions.ANYMOTION_1ST_Y_BIT
   def getYPosMotionDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != (not (status & (1 << definitions.ANYMOTION_SIGN_BIT)) and (status & (1 << definitions.ANYMOTION_1ST_Y_BIT)))
 
   # Check if motion interrupt was triggered by negative Z-axis motion
   # @return Motion detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.ANYMOTION_SIGN_BIT
   # @see definitions.ANYMOTION_1ST_Z_BIT
   def getZNegMotionDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != ((status & (1 << definitions.ANYMOTION_SIGN_BIT)) and (status & (1 << definitions.ANYMOTION_1ST_Z_BIT)))
 
   # Check if motion interrupt was triggered by positive Z-axis motion
   # @return Motion detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.ANYMOTION_SIGN_BIT
   # @see definitions.ANYMOTION_1ST_Z_BIT
   def getZPosMotionDetected():
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != (not (status & (1 << definitions.ANYMOTION_SIGN_BIT)) and (status & (1 << definitions.ANYMOTION_1ST_Z_BIT)))
 
   # Check if tap interrupt was triggered by negative X-axis tap
   # @return Tap detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.TAP_SIGN_BIT
   # @see definitions.TAP_1ST_X_BIT
   def getXNegTapDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != ((status & (1 << definitions.TAP_SIGN_BIT)) and (status & (1 << definitions.TAP_1ST_X_BIT)))
 
   # Check if tap interrupt was triggered by positive X-axis tap
   # @return Tap detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.TAP_SIGN_BIT
   # @see definitions.TAP_1ST_X_BIT
   def getXPosTapDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != (not (status & (1 << definitions.TAP_SIGN_BIT)) and (status & (1 << definitions.TAP_1ST_X_BIT)))
 
   # Check if tap interrupt was triggered by negative Y-axis tap
   # @return Tap detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.TAP_SIGN_BIT
   # @see definitions.TAP_1ST_Y_BIT
   def getYNegTapDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != ((status & (1 << definitions.TAP_SIGN_BIT)) and (status & (1 << definitions.TAP_1ST_Y_BIT)))
 
   # Check if tap interrupt was triggered by positive Y-axis tap
   # @return Tap detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.TAP_SIGN_BIT
   # @see definitions.TAP_1ST_Y_BIT
   def getYPosTapDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != (not (status & (1 << definitions.TAP_SIGN_BIT)) and (status & (1 << definitions.TAP_1ST_Y_BIT)))
 
   # Check if tap interrupt was triggered by negative Z-axis tap
   # @return Tap detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.TAP_SIGN_BIT
   # @see definitions.TAP_1ST_Z_BIT
   def getZNegTapDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != ((status & (1 << definitions.TAP_SIGN_BIT)) and (status & (1 << definitions.TAP_1ST_Z_BIT)))
 
   # Check if tap interrupt was triggered by positive Z-axis tap
   # @return Tap detection status
-  # @see registers.INT_STATUS_2
+  # @see registers_imu.INT_STATUS_2
   # @see definitions.TAP_SIGN_BIT
   # @see definitions.TAP_1ST_Z_BIT
   def getZPosTapDetected(self):
-    status = self._reg_read(registers.INT_STATUS_2)
+    status = self._reg_read(registers_imu.INT_STATUS_2)
     return 0 != (not (status & (1 << definitions.TAP_SIGN_BIT)) and (status & (1 << definitions.TAP_1ST_Z_BIT)))
 
   # Get Zero Motion Detection interrupt status.
@@ -1611,53 +1614,53 @@ class Driver:
   # BMI160 Data Sheet.
   #
   # @return Current interrupt status
-  # @see registers.INT_STATUS_1
+  # @see registers_common.INT_STATUS_1
   # @see definitions.NOMOTION_INT_BIT
   def getIntZeroMotionStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_1, definitions.NOMOTION_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_1, definitions.NOMOTION_INT_BIT, 1))
 
   # Get FIFO Buffer Full interrupt status.
   # This bit automatically sets to 1 when a FIFO Full condition has been
   # generated. The bit clears to 0 when the FIFO is not full.
   # @return Current interrupt status
-  # @see registers.INT_STATUS_1
+  # @see registers_common.INT_STATUS_1
   # @see definitions.FFULL_INT_BIT
   def getIntFIFOBufferFullStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_1, definitions.FFULL_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_1, definitions.FFULL_INT_BIT, 1))
 
   # Get Data Ready interrupt status.
   # This bit automatically sets to 1 when a Data Ready interrupt has been
   # generated. The bit clears to 0 after the data registers have been read.
   # @return Current interrupt status
-  # @see registers.INT_STATUS_1
+  # @see registers_common.INT_STATUS_1
   # @see definitions.FFULL_INT_BIT
   def getIntDataReadyStatus(self):
-    return 0 != (self._reg_read_bits(registers.INT_STATUS_1, definitions.DRDY_INT_BIT, 1))
+    return 0 != (self._reg_read_bits(registers_common.INT_STATUS_1, definitions.DRDY_INT_BIT, 1))
 
   # Get interrupt logic level mode.
   # Will be set 0 for active-high, 1 for active-low.
   # @return Current interrupt mode (0=active-high, 1=active-low)
-  # @see registers.INT_OUT_CTRL
+  # @see registers_imu.INT_OUT_CTRL
   # @see definitions.INT1_LVL
   def getInterruptMode(self):
-    return not (self._reg_read_bits(registers.INT_OUT_CTRL, definitions.INT1_LVL, 1))
+    return not (self._reg_read_bits(registers_imu.INT_OUT_CTRL, definitions.INT1_LVL, 1))
 
   # Set interrupt logic level mode.
   # @param mode New interrupt mode (0=active-high, 1=active-low)
   # @see getInterruptMode()
-  # @see registers.INT_OUT_CTRL
+  # @see registers_imu.INT_OUT_CTRL
   # @see definitions.INT1_LVL
   def setInterruptMode(self, mode):
-    self._reg_write_bits(registers.INT_OUT_CTRL,
+    self._reg_write_bits(registers_imu.INT_OUT_CTRL,
       0x0 if mode else 0x1, definitions.INT1_LVL, 1)
 
   # Get interrupt drive mode.
   # Will be set 0 for push-pull, 1 for open-drain.
   # @return Current interrupt drive mode (0=push-pull, 1=open-drain)
-  # @see registers.INT_OUT_CTRL
+  # @see registers_imu.INT_OUT_CTRL
   # @see definitions.INT1_OD
   def getInterruptDrive(self):
-    return 0 != (self._reg_read_bits(registers.INT_OUT_CTRL, definitions.INT1_OD, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_OUT_CTRL, definitions.INT1_OD, 1))
 
   # Set interrupt drive mode.
   # @param drive New interrupt drive mode (0=push-pull, 1=open-drain)
@@ -1665,7 +1668,7 @@ class Driver:
   # @see MPU6050_RA_INT_PIN_CFG
   # @see MPU6050_INTCFG_INT_OPEN_BIT
   def setInterruptDrive(self, drive):
-    self._reg_write_bits(registers.INT_OUT_CTRL,
+    self._reg_write_bits(registers_imu.INT_OUT_CTRL,
       0x1 if drive else 0x0, definitions.INT1_OD, 1)
 
   # Get interrupt latch mode.  The following options are available:
@@ -1696,36 +1699,36 @@ class Driver:
   # - Orientation (including Flat) detection
   #
   # @return Current latch mode
-  # @see registers.INT_LATCH
+  # @see registers_imu.INT_LATCH
   # @see BMI160InterruptLatchMode
   def getInterruptLatch(self):
-    return self._reg_read_bits(registers.INT_LATCH, definitions.LATCH_MODE_BIT, definitions.LATCH_MODE_LEN)
+    return self._reg_read_bits(registers_imu.INT_LATCH, definitions.LATCH_MODE_BIT, definitions.LATCH_MODE_LEN)
 
   # Set interrupt latch mode.
   # @param latch New latch mode
   # @see getInterruptLatch()
-  # @see registers.INT_LATCH
+  # @see registers_imu.INT_LATCH
   # @see BMI160InterruptLatchMode
   def setInterruptLatch(self, mode):
-    self._reg_write_bits(registers.INT_LATCH, mode,
+    self._reg_write_bits(registers_imu.INT_LATCH, mode,
       definitions.LATCH_MODE_BIT, definitions.LATCH_MODE_LEN)
 
   # Get interrupt enabled status.
   # @return Current interrupt enabled status
-  # @see registers.INT_OUT_CTRL
+  # @see registers_imu.INT_OUT_CTRL
   # @see definitions.INT1_OUTPUT_EN
   # */
   def getIntEnabled(self):
-    return 0 != (self._reg_read_bits(registers.INT_OUT_CTRL, definitions.INT1_OUTPUT_EN, 1))
+    return 0 != (self._reg_read_bits(registers_imu.INT_OUT_CTRL, definitions.INT1_OUTPUT_EN, 1))
 
   # Set interrupt enabled status.
   # @param enabled New interrupt enabled status
-  # @see registers.INT_OUT_CTRL
+  # @see registers_imu.INT_OUT_CTRL
   # @see definitions.INT1_OUTPUT_EN
   # */
   def setIntEnabled(self, enabled):
     self._reg_write_bits(
-      registers.INT_OUT_CTRL, 0x1 if enabled else 0, definitions.INT1_OUTPUT_EN, 1)
+      registers_imu.INT_OUT_CTRL, 0x1 if enabled else 0, definitions.INT1_OUTPUT_EN, 1)
 
   # Get raw 6-axis motion sensor readings (accel/gyro).
   # Retrieves all currently available motion sensor values.
@@ -1737,9 +1740,9 @@ class Driver:
   # @return az 16-bit signed integer container for accelerometer Z-axis value
   # @see getAcceleration()
   # @see getRotation()
-  # @see registers.GYRO_X_L
+  # @see registers_imu.GYRO_X_L
   def getMotion6(self):
-    raw = self._regs_read(registers.GYRO_X_L, 12)
+    raw = self._regs_read(registers_imu.GYRO_X_L, 12)
     vals = unpack('<6h', bytes(raw))
     return vals
 
@@ -1777,36 +1780,36 @@ class Driver:
   # @param x 16-bit signed integer container for X-axis acceleration
   # @param y 16-bit signed integer container for Y-axis acceleration
   # @param z 16-bit signed integer container for Z-axis acceleration
-  # @see registers.ACCEL_X_L
+  # @see registers_imu.ACCEL_X_L
   def getAcceleration(self):
-    raw = self._regs_read(registers.ACCEL_X_L, 6)
+    raw = self._regs_read(registers_imu.ACCEL_X_L, 6)
     vals = unpack('<3h', bytes(raw))
     return vals
 
   # Get X-axis accelerometer reading.
   # @return X-axis acceleration measurement in 16-bit 2's complement format
   # @see getMotion6()
-  # @see registers.ACCEL_X_L
+  # @see registers_imu.ACCEL_X_L
   def getAccelerationX(self):
-    raw = self._regs_read(registers.ACCEL_X_L, 2)
+    raw = self._regs_read(registers_imu.ACCEL_X_L, 2)
     val = unpack('<h', bytes(raw))
     return val
 
   # Get Y-axis accelerometer reading.
   # @return Y-axis acceleration measurement in 16-bit 2's complement format
   # @see getMotion6()
-  # @see registers.ACCEL_Y_L
+  # @see registers_imu.ACCEL_Y_L
   def getAccelerationY(self):
-    raw = self._regs_read(registers.ACCEL_XYL, 2)
+    raw = self._regs_read(registers_imu.ACCEL_XYL, 2)
     val = unpack('<h', bytes(raw))
     return val
 
   # Get Z-axis accelerometer reading.
   # @return Z-axis acceleration measurement in 16-bit 2's complement format
   # @see getMotion6()
-  # @see registers.ACCEL_Z_L
+  # @see registers_imu.ACCEL_Z_L
   def getAccelerationZ(self):
-    raw = self._regs_read(registers.ACCEL_Z_L, 2)
+    raw = self._regs_read(registers_imu.ACCEL_Z_L, 2)
     val = unpack('<h', bytes(raw))
     return val
 
@@ -1825,9 +1828,9 @@ class Driver:
   # 0x8000   | Invalid
   #
   # @return Temperature reading in 16-bit 2's complement format
-  # @see registers.TEMP_L
+  # @see registers_imu.TEMP_L
   def getTemperature(self):
-    raw = self._regs_read(registers.TEMP_L, 2)
+    raw = self._regs_read(registers_imu.TEMP_L, 2)
     val = unpack('<h', bytes(raw))[0]
     deg_c = (val*0.001953185)+23
     return deg_c
@@ -1863,36 +1866,36 @@ class Driver:
   # @param y 16-bit signed integer container for Y-axis rotation
   # @param z 16-bit signed integer container for Z-axis rotation
   # @see getMotion6()
-  # @see registers.GYRO_X_L
+  # @see registers_imu.GYRO_X_L
   def getRotation(self):
-    raw = self._regs_read(registers.GYRO_X_L, 6)
+    raw = self._regs_read(registers_imu.GYRO_X_L, 6)
     vals = unpack('<3h', bytes(raw))
     return (vals[0], vals[1], vals[2])
 
   # Get X-axis gyroscope reading.
   # @return X-axis rotation measurement in 16-bit 2's complement format
   # @see getMotion6()
-  # @see registers.GYRO_X_L
+  # @see registers_imu.GYRO_X_L
   def getRotationX(self):
-    raw = self._regs_read(registers.GYRO_X_L, 2)
+    raw = self._regs_read(registers_imu.GYRO_X_L, 2)
     val = unpack('<h', bytes(raw))
     return val
 
   # Get Y-axis gyroscope reading.
   # @return Y-axis rotation measurement in 16-bit 2's complement format
   # @see getMotion6()
-  # @see registers.GYRO_Y_L
+  # @see registers_imu.GYRO_Y_L
   def getRotationY(self):
-    raw = self._regs_read(registers.GYRO_Y_L, 2)
+    raw = self._regs_read(registers_imu.GYRO_Y_L, 2)
     val = unpack('<h', bytes(raw))
     return val
 
   # Get Z-axis gyroscope reading.
   # @return Z-axis rotation measurement in 16-bit 2's complement format
   # @see getMotion6()
-  # @see registers.GYRO_Y_L
+  # @see registers_imu.GYRO_Y_L
   def getRotationZ(self):
-    raw = self._regs_read(registers.GYRO_Z_L, 2)
+    raw = self._regs_read(registers_imu.GYRO_Z_L, 2)
     val = unpack('<h', bytes(raw))
     return val
 
@@ -1931,4 +1934,4 @@ class Driver:
     self.bus.close()
 
 
-driver = Driver()
+driver = BMU_IMU()
