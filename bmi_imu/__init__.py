@@ -26,13 +26,15 @@ class BMU_IMU:
     
     # Initialize the i2c bus driver
     self.bus = SMBus(bus)
-
+    self.device = None
     match self.get_device_id():
       case 0xd1:
         print("Device is BMI160")
+        self.device = "bmi-160"
         import registers_160 as registers_imu
       case 0x27:
         print("Device is BMI260")
+        self.device = "bmi-260"
         import registers_260 as registers_imu
       case _:
         print("Unable to identify device by ID")
@@ -69,6 +71,8 @@ class BMU_IMU:
     self._reg_write(registers_imu.INT_MAP_0, 0xFF)
     self._reg_write(registers_imu.INT_MAP_1, 0xF0)
     self._reg_write(registers_imu.INT_MAP_2, 0x00)
+
+    print(f'Successfully initialized {self.device}')
 
   def _reg_read_bits(self, reg, pos, len):
     b = self._reg_read(reg)
