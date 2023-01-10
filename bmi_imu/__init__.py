@@ -32,14 +32,17 @@ class BMU_IMU:
         print("Device is BMI160")
         self.device = "bmi-160"
         import registers_160 as registers_imu
+        _init_160()
       case 0x27:
         print("Device is BMI260")
         self.device = "bmi-260"
         import registers_260 as registers_imu
+        _init_260()
       case _:
         print("Unable to identify device by ID")
         exit(1)
 
+def _init_160():
     # Issue a soft-reset to bring the device into a clean state
     self._reg_write(registers_common.CMD, commands.SOFT_RESET)
     sleep_ms(1)
@@ -65,12 +68,45 @@ class BMU_IMU:
     sleep_ms(1)
 
     self.setFullScaleGyroRange(definitions.GYRO_RANGE_250, 250.0)
-    self.setFullScaleAccelRange(definitions.ACCEL_RANGE_2G, 2.0)
+    self.setFullScaleAccelRange(registers_imu.ACCEL_RANGE_2G, 2.0)
 
     # Only PIN1 interrupts currently supported - map all interrupts to PIN1
     self._reg_write(registers_imu.INT_MAP_0, 0xFF)
     self._reg_write(registers_imu.INT_MAP_1, 0xF0)
     self._reg_write(registers_imu.INT_MAP_2, 0x00)
+
+    print(f'Successfully initialized {self.device}')
+
+  def _init_260():
+    # Issue a soft-reset to bring the device into a clean state
+    self._reg_write(registers_common.CMD, commands.SOFT_RESET)
+    sleep_ms(1)
+    print(f'{self.device} soft reset success')
+
+    # Power up the accelerometer
+    self._reg_write(registers_imu.PWR_CTRL, definitions.BMI260_ACC_EN)
+
+    # Wait for power-up to complete
+    while (1 != self._reg_read_bits(registers_common.PMU_STATUS, definitions.ACC_PMU_STATUS_BIT, definitions.ACC_PMU_STATUS_LEN)):
+      pass
+    sleep_ms(1)
+    print(f'{self.device} accelerometer powered on')
+
+    # Power up the gyroscope
+    self._reg_write(registers_imu.PWR_CTRL, definitions.BMI260_GYR_EN)
+    sleep_ms(1)
+    # Wait for power-up to complete
+    while (1 != self._reg_read_bits(registers_common.PMU_STATUS, definitions.GYR_PMU_STATUS_BIT, definitions.GYR_PMU_STATUS_LEN)):
+      sleep_ms(200)
+      pass
+    sleep_ms(1)
+    print(f'{self.device} gyroscope powered on')
+
+    self.setFullScaleGyroRange(definitions.GYRO_RANGE_250, 250.0)
+    print(f'Gyro Range Set')
+
+    self.setFullScaleAccelRange(registers_imu.ACCEL_RANGE_2G, 2.0)
+    print(f'Accelerometer Range Set')
 
     print(f'Successfully initialized {self.device}')
 
@@ -1931,7 +1967,7 @@ class BMU_IMU:
     read = i2c_msg.read(self.addr, n)
     self.bus.i2c_rdwr(write, read)
     result = list(read)
-    #print('< ', result)
+    print('< ', result)
     return result
 
   def close(self):
