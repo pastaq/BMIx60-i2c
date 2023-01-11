@@ -32,12 +32,12 @@ class BMU_IMU:
         print("Device is BMI160")
         self.device = "bmi-160"
         import registers_160 as registers_imu
-        _init_160()
+        self._init_160()
       case 0x27:
         print("Device is BMI260")
         self.device = "bmi-260"
         import registers_260 as registers_imu
-        _init_260()
+        self._init_260()
       case _:
         print("Unable to identify device by ID")
         exit(1)
@@ -85,21 +85,22 @@ class BMU_IMU:
 
     # Power up the accelerometer
     self._reg_write(registers_imu.PWR_CTRL, definitions.BMI260_ACC_EN)
+    print(f'{self.device} accelerometer power on request sent')
 
     # Wait for power-up to complete
     while (1 != self._reg_read_bits(registers_common.PMU_STATUS, definitions.ACC_PMU_STATUS_BIT, definitions.ACC_PMU_STATUS_LEN)):
+      sleep_ms(2)
       pass
-    sleep_ms(1)
     print(f'{self.device} accelerometer powered on')
 
     # Power up the gyroscope
     self._reg_write(registers_imu.PWR_CTRL, definitions.BMI260_GYR_EN)
-    sleep_ms(1)
+    print(f'{self.device} gyroscope power on request sent')
+
     # Wait for power-up to complete
     while (1 != self._reg_read_bits(registers_common.PMU_STATUS, definitions.GYR_PMU_STATUS_BIT, definitions.GYR_PMU_STATUS_LEN)):
-      sleep_ms(200)
+      sleep_ms(45)
       pass
-    sleep_ms(1)
     print(f'{self.device} gyroscope powered on')
 
     self.setFullScaleGyroRange(definitions.GYRO_RANGE_250, 250.0)
