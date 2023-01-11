@@ -42,7 +42,7 @@ class BMU_IMU:
         print("Unable to identify device by ID")
         exit(1)
 
-  def _init_160():
+  def _init_160(self):
     # Issue a soft-reset to bring the device into a clean state
     self._reg_write(registers_common.CMD, commands.SOFT_RESET)
     sleep_ms(1)
@@ -77,7 +77,7 @@ class BMU_IMU:
 
     print(f'Successfully initialized {self.device}')
 
-  def _init_260():
+  def _init_260(self):
     # Issue a soft-reset to bring the device into a clean state
     self._reg_write(registers_common.CMD, commands.SOFT_RESET)
     sleep_ms(1)
